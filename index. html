@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Verification</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body style="background-color: #1c1c1e; color: white; font-family: sans-serif; text-align: center; padding: 50px 20px;">
+
+    <h2 id="status">🔄 መሳሪያዎ እየተፈተሸ ነው...</h2>
+    <p id="sub-status">እባክዎ ለአፍታ ይጠብቁ</p>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // 1. የስልኩን ቋሚ ማንነት (Device Fingerprint) መፍጠር
+        function generateDeviceId() {
+            let navigatorInfo = window.navigator.userAgent + window.navigator.language + window.screen.colorDepth + window.screen.width + window.screen.height;
+            // ቀላል ሃሽ መፍጠሪያ
+            let hash = 0;
+            for (let i = 0; i < navigatorInfo.length; i++) {
+                let char = navigatorInfo.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return "DEV_" + Math.abs(hash);
+        }
+
+        let uniqueDeviceId = generateDeviceId();
+
+        // 2. የ VPN ፍተሻ በ IP መሳብ
+        fetch('https://ipapi.co/json/')
+        .then(res => res.json())
+        .then(data => {
+            const orgName = (data.org || "").toLowerCase();
+            const isVPN = orgName.includes("vpn") || orgName.includes("proxy") || orgName.includes("hosting");
+
+            if (isVPN) {
+                tg.sendData("BANNED_VPN");
+                return;
+            }
+
+            // 3. የስልኩን መለያ (Device ID) ለቦቱ መላክ
+            tg.sendData("CHECK_DEVICE:" + uniqueDeviceId);
+            document.getElementById("status").innerHTML = "✅ ተጠናቋል!";
+            setTimeout(() => { tg.close(); }, 1000);
+        })
+        .catch(err => {
+            tg.sendData("CHECK_DEVICE:" + uniqueDeviceId);
+            tg.close();
+        });
+    </script>
+</body>
+</html>
