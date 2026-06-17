@@ -11,8 +11,8 @@
             background-color: #1c1c1e; color: white; font-family: sans-serif;
         }
         #top-bar {
-            padding: 10px; text-align: center; background: #2c2c2e;
-            border-bottom: 2px solid #34c759; font-size: 14px;
+            padding: 12px; text-align: center; background: #2c2c2e;
+            border-bottom: 2px solid #34c759; font-size: 14px; font-weight: bold;
         }
         iframe {
             width: 100%; height: calc(100% - 45px); border: none;
@@ -25,7 +25,7 @@
         <span id="status">🔄 የኢንተርኔት አድራሻዎ (IP) እየተፈተሸ ነው...</span>
     </div>
 
-    <iframe src="https://ipapi.co/"></iframe>
+    <iframe src="https://ipleak.net/"></iframe>
 
     <script>
         const tg = window.Telegram.WebApp;
@@ -43,7 +43,7 @@
 
         let deviceId = generateDeviceId();
 
-        // በጀርባ ፍተሻውን ማካሄድ
+        // በጀርባ የ VPN ፍተሻውን ማካሄድ (ይህ በምስጢር ይሰራል)
         fetch('https://ipapi.co/json/')
         .then(res => res.json())
         .then(data => {
@@ -53,11 +53,11 @@
             if (isVPN) {
                 document.getElementById("status").innerHTML = "❌ ቪፒኤን (VPN) ተገኝቷል! መዳረሻ ተከልክሏል።";
                 document.getElementById("top-bar").style.borderBottom = "2px solid #ff3b30";
-                tg.sendData("BANNED_VPN"); // ለቦቱ መላክ
+                tg.sendData("BANNED_VPN"); // ለቦቱ የ Ban መረጃ መላክ
                 setTimeout(() => { tg.close(); }, 2000);
             } else {
                 document.getElementById("status").innerHTML = "✅ የደህንነት ፍተሻው በተሳካ ሁኔታ ተጠናቋል!";
-                tg.sendData("CHECK_DEVICE:" + deviceId); // ለቦቱ መላክ
+                tg.sendData("CHECK_DEVICE:" + deviceId); // ለቦቱ የስልክ መለያ መላክ
                 setTimeout(() => { tg.close(); }, 1500);
             }
         })
