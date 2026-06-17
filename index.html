@@ -3,55 +3,44 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Network Verification</title>
+    <title>Network Verification</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
             background-color: #1c1c1e; color: white; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
             text-align: center; margin: 0; padding: 20px;
         }
         .container {
-            margin-top: 30px; padding: 20px; background: #2c2c2e; 
+            margin-top: 50px; padding: 25px; background: #2c2c2e; 
             border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
-        .status-header {
-            font-size: 18px; font-weight: bold; margin-bottom: 20px; color: #ff9500;
-        }
         .ip-box {
-            font-size: 26px; font-weight: bold; color: #30d158; margin: 15px 0; letter-spacing: 1px;
-        }
-        .info-item {
-            font-size: 16px; color: #aaa; margin: 8px 0; text-align: left;
-            background: #1c1c1e; padding: 10px; border-radius: 8px;
+            font-size: 32px; font-weight: bold; color: #30d158; margin: 20px 0;
         }
         .verify-btn {
             background-color: #30d158; color: white; border: none;
             padding: 15px 30px; font-size: 18px; font-weight: bold;
-            border-radius: 10px; width: 100%; margin-top: 25px;
-            cursor: pointer; display: none; box-shadow: 0 4px 10px rgba(48,209,88,0.4);
+            border-radius: 10px; width: 100%; margin-top: 20px;
+            cursor: pointer; box-shadow: 0 4px 10px rgba(48,209,88,0.4);
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <div id="status" class="status-header">🔄 የኔትወርክ ደህንነትዎ እየተፈተሸ ነው...</div>
+        <div style="font-size: 18px; color: #ff9500; font-weight: bold;">🔒 የደህንነት ማረጋገጫ</div>
+        <p style="color: #aaa;">የእርሶ የኢንተርኔት መለያ አድራሻ (IP) ፦</p>
         
-        <div class="ip-box" id="ip-display">0.0.0.0</div>
+        <!-- እውነተኛው IP እዚህ ይወጣል -->
+        <div class="ip-box" id="ip-display">በመፈለግ ላይ...</div>
         
-        <div class="info-item">🌍 ሀገር (Country): <b id="country-display" style="float:right; color:white;">Loading...</b></div>
-        <div class="info-item">🏙️ ከተማ (City): <b id="city-display" style="float:right; color:white;">Loading...</b></div>
-        <div class="info-item">🛡️ ቪፒኤን (VPN/Proxy): <b id="vpn-display" style="float:right; color:white;">Checking...</b></div>
-        
-        <button id="action-btn" class="verify-btn" onclick="sendVerification()">✅ ፍተሻውን አጠናቅቅ</button>
+        <button class="verify-btn" onclick="sendVerification()">✅ ፍተሻውን አጠናቅቅ</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand(); 
-
-        let finalDataToSend = "";
+        tg.expand();
 
         function generateDeviceId() {
             let info = window.navigator.userAgent + window.screen.width + window.screen.height;
@@ -65,41 +54,20 @@
 
         let deviceId = generateDeviceId();
 
-        // 🔥 ይሄኛው አዲስ ሲስተም VPNን በደንብ ያውቃል
-        fetch('https://ipwho.is/')
+        // 🔥 Cloudflare የሌለበት ጽሑፍ ብቻ የሚሰጥ ገጽ (Plain text API)
+        // ይህንን Cloudflare በጭራሽ አይዘጋውም!
+        fetch('https://api.ipify.org?format=json')
         .then(res => res.json())
         .then(data => {
-            document.getElementById("ip-display").innerText = data.ip || "Unknown";
-            document.getElementById("country-display").innerText = data.country || "Unknown";
-            document.getElementById("city-display").innerText = data.city || "Unknown";
-
-            // ipwho.is ውስጥ እውነተኛ የቪፒኤን ፍተሻ ቦታ
-            const isVPN = data.security && (data.security.vpn || data.security.proxy || data.security.tor || data.security.hosting);
-
-            if (isVPN) {
-                document.getElementById("vpn-display").innerText = "Yes (የተከለከለ)";
-                document.getElementById("vpn-display").style.color = "#ff453a";
-                document.getElementById("status").innerText = "❌ ቪፒኤን (VPN) ተገኝቷል! መዳረሻ የለዎትም።";
-                document.getElementById("status").style.color = "#ff453a";
-                finalDataToSend = "BANNED_VPN";
-            } else {
-                document.getElementById("vpn-display").innerText = "No (ደህንነቱ የተጠበቀ)";
-                document.getElementById("vpn-display").style.color = "#30d158";
-                document.getElementById("status").innerText = "🔒 የደህንነት ፍተሻው ተጠናቋል። እባክዎ ያረጋግጡ!";
-                document.getElementById("status").style.color = "#30d158";
-                finalDataToSend = "CHECK_DEVICE:" + deviceId;
-            }
-            
-            document.getElementById("action-btn").style.display = "block";
+            document.getElementById("ip-display").innerText = data.ip;
         })
         .catch(err => {
-            document.getElementById("status").innerText = "✅ ዝግጁ ነው! እባክዎ ከታች ያረጋግጡ።";
-            finalDataToSend = "CHECK_DEVICE:" + deviceId;
-            document.getElementById("action-btn").style.display = "block";
+            document.getElementById("ip-display").innerText = "የተረጋገጠ";
         });
 
         function sendVerification() {
-            tg.sendData(finalDataToSend);
+            // ለቦቱ መረጃውን መላክ
+            tg.sendData("CHECK_DEVICE:" + deviceId);
             setTimeout(() => { tg.close(); }, 500);
         }
     </script>
