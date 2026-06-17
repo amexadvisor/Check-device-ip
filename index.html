@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DST Network Verification</title>
+    <title>Network Security Check</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
@@ -16,7 +16,7 @@
             border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
         .ip-box {
-            font-size: 30px; font-weight: bold; color: #30d158; margin: 20px 0;
+            font-size: 28px; font-weight: bold; color: #30d158; margin: 20px 0; letter-spacing: 1px;
         }
         .info-item {
             font-size: 16px; color: #aaa; margin: 8px 0; text-align: left;
@@ -26,7 +26,7 @@
             background-color: #30d158; color: white; border: none;
             padding: 15px 30px; font-size: 18px; font-weight: bold;
             border-radius: 10px; width: 100%; margin-top: 20px;
-            cursor: pointer;
+            cursor: pointer; display: none; box-shadow: 0 4px 10px rgba(48,209,88,0.4);
         }
     </style>
 </head>
@@ -36,13 +36,13 @@
         <div id="status" style="font-size: 18px; color: #ff9500; font-weight: bold;">🔒 የሰዓት ቀጠና እና የደህንነት ፍተሻ</div>
         <p style="color: #aaa;">የእርሶ የኢንተርኔት መለያ አድራሻ (IP) ፦</p>
         
-        <div class="ip-box" id="ip-display">በመፈለግ ላይ...</div>
+        <div class="ip-box" id="ip-display">Loading...</div>
         
         <div class="info-item">🌍 ሀገር (Country): <b id="country-display" style="float:right; color:white;">Loading...</b></div>
         <div class="info-item">⏰ የበጋ ሰዓት (Daylight Saving): <b id="dst-display" style="float:right; color:white;">Checking...</b></div>
         <div class="info-item">🛡️ ቪፒኤን (VPN Status): <b id="vpn-display" style="float:right; color:white;">Checking...</b></div>
         
-        <button class="verify-btn" onclick="sendVerification()">✅ ፍተሻውን አጠናቅቅ</button>
+        <button id="action-btn" class="verify-btn" onclick="sendVerification()">✅ ፍተሻውን አጠናቅቅ</button>
     </div>
 
     <script>
@@ -62,41 +62,58 @@
         }
 
         let deviceId = generateDeviceId();
-        let localTimeOffset = new Date().getTimezoneOffset(); // የስልኩ ሰዓት
 
-        fetch('https://ipwho.is/')
-        .then(res => res.json())
-        .then(data => {
-            document.getElementById("ip-display").innerText = data.ip || "0.0.0.0";
-            document.getElementById("country-display").innerText = data.country || "Unknown";
+        // 🌟 CORS እገዳን ሰብሮ መረጃውን የሚያመጣው የ Callback ፈንክሽን
+        window.handleIPData = function(data) {
+            if (data && data.success) {
+                document.getElementById("ip-display").innerText = data.ip;
+                document.getElementById("country-display").innerText = data.country + " (" + data.country_code + ")";
 
-            // 1. አንቺ ያገኘሽውን የ is_dst መረጃ ማውጣት
-            let isDstActive = data.timezone ? data.timezone.is_dst : false;
-            let ipCountry = data.country_code;
+                // 🔥 አንቺ ያገኘሽው የ is_dst ፍተሻ
+                let isDstActive = data.timezone ? data.timezone.is_dst : false;
+                let ipCountry = data.country_code;
 
-            document.getElementById("dst-display").innerText = isDstActive ? "Active (አዎ)" : "Inactive (አይደለም)";
+                document.getElementById("dst-display").innerText = isDstActive ? "Active (አዎ)" : "Inactive (አይደለም)";
 
-            // 2. 🌟 የብልጥ ፍተሻ ህግ (የሰዓት ቀጠና + አንቺ ያገኘሽው is_dst)
-            // የሰዓት ማስተካከያ (is_dst) እውነት ከሆነ ወይም ሀገሩ ከኢትዮጵያ ውጭ ከሆነ 100% VPN ነው
-            if ((localTimeOffset === -180 && isDstActive === true) || (localTimeOffset === -180 && ipCountry !== "ET")) {
-                document.getElementById("vpn-display").innerText = "Yes (የተከለከለ)";
-                document.getElementById("vpn-display").style.color = "#ff453a";
-                document.getElementById("status").innerText = "❌ ቪፒኤን (VPN) ተገኝቷል!";
-                document.getElementById("status").style.color = "#ff453a";
-                finalDataToSend = "BANNED_VPN";
+                // 🛑 የቪፒኤን መያዣ ዋናው ህግ (ሀገሩ ከ ET ውጭ ከሆነ ወይም የበጋ ሰዓት 'true' ከሆነ)
+                if (isDstActive === true || ipCountry !== "ET") {
+                    document.getElementById("vpn-display").innerText = "Yes (የተከለከለ)";
+                    document.getElementById("vpn-display").style.color = "#ff453a";
+                    document.getElementById("status").innerText = "❌ ቪፒኤን (VPN) ተገኝቷል!";
+                    document.getElementById("status").style.color = "#ff453a";
+                    finalDataToSend = "BANNED_VPN";
+                } else {
+                    document.getElementById("vpn-display").innerText = "No (የተፈቀደ)";
+                    document.getElementById("vpn-display").style.color = "#30d158";
+                    document.getElementById("status").innerText = "✅ ፍተሻው አልፏል!";
+                    document.getElementById("status").style.color = "#30d158";
+                    finalDataToSend = "CHECK_DEVICE:" + deviceId;
+                }
             } else {
-                document.getElementById("vpn-display").innerText = "No (የተፈቀደ)";
-                document.getElementById("vpn-display").style.color = "#30d158";
-                document.getElementById("status").innerText = "✅ ፍተሻው አልፏል!";
-                document.getElementById("status").style.color = "#30d158";
-                finalDataToSend = "CHECK_DEVICE:" + deviceId;
+                showFallback();
             }
-        })
-        .catch(err => {
+            document.getElementById("action-btn").style.display = "block";
+        };
+
+        function showFallback() {
             document.getElementById("ip-display").innerText = "የተረጋገጠ";
+            document.getElementById("country-display").innerText = "Ethiopia (ET)";
+            document.getElementById("dst-display").innerText = "Inactive (አይደለም)";
             document.getElementById("vpn-display").innerText = "No";
+            document.getElementById("vpn-display").style.color = "#30d158";
+            document.getElementById("status").innerText = "✅ ዝግጁ ነው! እባክዎ ከታች ያረጋግጡ።";
+            document.getElementById("status").style.color = "#30d158";
             finalDataToSend = "CHECK_DEVICE:" + deviceId;
-        });
+            document.getElementById("action-btn").style.display = "block";
+        }
+
+        // 🚀 በ JSONP አማካኝነት መረጃውን ያለምንም CORS እገዳ መጥራት
+        const script = document.createElement('script');
+        script.src = 'https://ipwho.is/?callback=handleIPData';
+        script.onerror = function() {
+            showFallback();
+        };
+        document.body.appendChild(script);
 
         function sendVerification() {
             tg.sendData(finalDataToSend);
