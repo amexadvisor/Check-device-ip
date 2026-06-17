@@ -3,33 +3,55 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IP & Device Verification</title>
+    <title>Advanced Network Verification</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body, html {
-            margin: 0; padding: 0; height: 100%; overflow: hidden;
-            background-color: #1c1c1e; color: white; font-family: sans-serif;
+        body {
+            background-color: #1c1c1e; color: white; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            text-align: center; margin: 0; padding: 20px;
         }
-        #top-bar {
-            padding: 12px; text-align: center; background: #2c2c2e;
-            border-bottom: 2px solid #34c759; font-size: 14px; font-weight: bold;
+        .container {
+            margin-top: 30px; padding: 20px; background: #2c2c2e; 
+            border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
-        iframe {
-            width: 100%; height: calc(100% - 45px); border: none;
+        .status-header {
+            font-size: 18px; font-weight: bold; margin-bottom: 20px; color: #ff9500;
+        }
+        .ip-box {
+            font-size: 26px; font-weight: bold; color: #30d158; margin: 15px 0; letter-spacing: 1px;
+        }
+        .info-item {
+            font-size: 16px; color: #aaa; margin: 8px 0; text-align: left;
+            background: #1c1c1e; padding: 10px; border-radius: 8px;
+        }
+        .verify-btn {
+            background-color: #30d158; color: white; border: none;
+            padding: 15px 30px; font-size: 18px; font-weight: bold;
+            border-radius: 10px; width: 100%; margin-top: 25px;
+            cursor: pointer; display: none; box-shadow: 0 4px 10px rgba(48,209,88,0.4);
         }
     </style>
 </head>
 <body>
 
-    <div id="top-bar">
-        <span id="status">🔄 የኢንተርኔት አድራሻዎ (IP) እየተፈተሸ ነው...</span>
+    <div class="container">
+        <div id="status" class="status-header">🔄 የኔትወርክ ደህንነትዎ እየተፈተሸ ነው...</div>
+        
+        <div class="ip-box" id="ip-display">0.0.0.0</div>
+        
+        <div class="info-item">🌍 ሀገር (Country): <b id="country-display" style="float:right; color:white;">Loading...</b></div>
+        <div class="info-item">🏙️ ከተማ (City): <b id="city-display" style="float:right; color:white;">Loading...</b></div>
+        <div class="info-item">🛡️ ቪፒኤን (VPN/Proxy): <b id="vpn-display" style="float:right; color:white;">Checking...</b></div>
+        
+        <button id="action-btn" class="verify-btn" onclick="sendVerification()">✅ ፍተሻውን አጠናቅቅ</button>
     </div>
-
-    <iframe src="https://ipleak.net/"></iframe>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand(); // ዌብ አፑን ሙሉ ስክሪን ማድረግ
+        tg.expand(); 
+
+        let finalDataToSend = "";
 
         function generateDeviceId() {
             let info = window.navigator.userAgent + window.screen.width + window.screen.height;
@@ -43,30 +65,43 @@
 
         let deviceId = generateDeviceId();
 
-        // በጀርባ የ VPN ፍተሻውን ማካሄድ (ይህ በምስጢር ይሰራል)
-        fetch('https://ipapi.co/json/')
+        // 🔥 ይሄኛው አዲስ ሲስተም VPNን በደንብ ያውቃል
+        fetch('https://ipwho.is/')
         .then(res => res.json())
         .then(data => {
-            const orgName = (data.org || "").toLowerCase();
-            const isVPN = orgName.includes("vpn") || orgName.includes("proxy") || orgName.includes("hosting");
+            document.getElementById("ip-display").innerText = data.ip || "Unknown";
+            document.getElementById("country-display").innerText = data.country || "Unknown";
+            document.getElementById("city-display").innerText = data.city || "Unknown";
+
+            // ipwho.is ውስጥ እውነተኛ የቪፒኤን ፍተሻ ቦታ
+            const isVPN = data.security && (data.security.vpn || data.security.proxy || data.security.tor || data.security.hosting);
 
             if (isVPN) {
-                document.getElementById("status").innerHTML = "❌ ቪፒኤን (VPN) ተገኝቷል! መዳረሻ ተከልክሏል።";
-                document.getElementById("top-bar").style.borderBottom = "2px solid #ff3b30";
-                tg.sendData("BANNED_VPN"); // ለቦቱ የ Ban መረጃ መላክ
-                setTimeout(() => { tg.close(); }, 2000);
+                document.getElementById("vpn-display").innerText = "Yes (የተከለከለ)";
+                document.getElementById("vpn-display").style.color = "#ff453a";
+                document.getElementById("status").innerText = "❌ ቪፒኤን (VPN) ተገኝቷል! መዳረሻ የለዎትም።";
+                document.getElementById("status").style.color = "#ff453a";
+                finalDataToSend = "BANNED_VPN";
             } else {
-                document.getElementById("status").innerHTML = "✅ የደህንነት ፍተሻው በተሳካ ሁኔታ ተጠናቋል!";
-                tg.sendData("CHECK_DEVICE:" + deviceId); // ለቦቱ የስልክ መለያ መላክ
-                setTimeout(() => { tg.close(); }, 1500);
+                document.getElementById("vpn-display").innerText = "No (ደህንነቱ የተጠበቀ)";
+                document.getElementById("vpn-display").style.color = "#30d158";
+                document.getElementById("status").innerText = "🔒 የደህንነት ፍተሻው ተጠናቋል። እባክዎ ያረጋግጡ!";
+                document.getElementById("status").style.color = "#30d158";
+                finalDataToSend = "CHECK_DEVICE:" + deviceId;
             }
+            
+            document.getElementById("action-btn").style.display = "block";
         })
         .catch(err => {
-            // ኔትወርክ ቢጠፋ እንኳ በስልክ መለያ ማሳለፍ
-            document.getElementById("status").innerHTML = "✅ ተጠናቋል!";
-            tg.sendData("CHECK_DEVICE:" + deviceId);
-            setTimeout(() => { tg.close(); }, 1500);
+            document.getElementById("status").innerText = "✅ ዝግጁ ነው! እባክዎ ከታች ያረጋግጡ።";
+            finalDataToSend = "CHECK_DEVICE:" + deviceId;
+            document.getElementById("action-btn").style.display = "block";
         });
+
+        function sendVerification() {
+            tg.sendData(finalDataToSend);
+            setTimeout(() => { tg.close(); }, 500);
+        }
     </script>
 </body>
 </html>
