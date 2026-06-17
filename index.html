@@ -3,34 +3,33 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Device Verification</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <title>Device & Network Verification</title>
 </head>
 <body style="background-color: #1c1c1e; color: white; font-family: sans-serif; text-align: center; padding: 50px 20px;">
 
-    <h2 id="status">🔄 መሳሪያዎ እየተፈተሸ ነው...</h2>
+    <h2 id="status">🔄 ደህንነትዎ እየተፈተሸ ነው...</h2>
     <p id="sub-status">እባክዎ ለአፍታ ይጠብቁ</p>
+    
+    <div id="code-box" style="display:none; margin: 30px auto; padding: 15px; background: #2c2c2e; border: 2px dashed #34c759; border-radius: 10px; width: 80%; max-width: 300px;">
+        <p style="margin:0; color:#aaa; font-size:14px;">የማረጋገጫ ኮድዎ፦</p>
+        <h1 id="secret-code" style="margin:10px 0; color:#34c759; letter-spacing: 2px;"></h1>
+        <p style="margin:0; color:#34c759; font-size:12px;">👆 ኮዱን ጫን አድርገው ይቅዱት (Copy)</p>
+    </div>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-
-        // 1. የስልኩን ቋሚ ማንነት (Device Fingerprint) መፍጠር
+        // ለእያንዳንዱ ስልክ የማይቀየር መለያ መፍጠር (Airplane modeን ለመከላከል)
         function generateDeviceId() {
-            let navigatorInfo = window.navigator.userAgent + window.navigator.language + window.screen.colorDepth + window.screen.width + window.screen.height;
-            // ቀላል ሃሽ መፍጠሪያ
+            let info = window.navigator.userAgent + window.screen.width + window.screen.height;
             let hash = 0;
-            for (let i = 0; i < navigatorInfo.length; i++) {
-                let char = navigatorInfo.charCodeAt(i);
-                hash = ((hash << 5) - hash) + char;
+            for (let i = 0; i < info.length; i++) {
+                hash = ((hash << 5) - hash) + info.charCodeAt(i);
                 hash = hash & hash;
             }
-            return "DEV_" + Math.abs(hash);
+            return Math.abs(hash).toString().substring(0, 6); // ባለ 6 ዲጂት ኮድ
         }
 
-        let uniqueDeviceId = generateDeviceId();
+        let deviceHash = generateDeviceId();
 
-        // 2. የ VPN ፍተሻ በ IP መሳብ
         fetch('https://ipapi.co/json/')
         .then(res => res.json())
         .then(data => {
@@ -38,18 +37,25 @@
             const isVPN = orgName.includes("vpn") || orgName.includes("proxy") || orgName.includes("hosting");
 
             if (isVPN) {
-                tg.sendData("BANNED_VPN");
+                document.getElementById("status").innerHTML = "❌ ፍተሻው አልተሳካም!";
+                document.getElementById("sub-status").innerHTML = "ቪፒኤን (VPN) ወይም ፕሮክሲ መጠቀም የተከለከለ ነው።";
                 return;
             }
 
-            // 3. የስልኩን መለያ (Device ID) ለቦቱ መላክ
-            tg.sendData("CHECK_DEVICE:" + uniqueDeviceId);
-            document.getElementById("status").innerHTML = "✅ ተጠናቋል!";
-            setTimeout(() => { tg.close(); }, 1000);
+            // ቪፒኤን ካልተጠቀሙ ሚስጥራዊ ኮዱን ማሳየት
+            // ኮዱ ከስልካቸው መለያ ቁጥር ጋር የተያያዘ ነው (ለምሳሌ፦ VERIFY-847392)
+            let finalCode = "VERIFY-" + deviceHash;
+            document.getElementById("secret-code").innerHTML = finalCode;
+            
+            document.getElementById("status").innerHTML = "✅ ፍተሻው ተጠናቋል!";
+            document.getElementById("sub-status").innerHTML = "እባክዎ ከታች ያለውን ኮድ ኮፒ አድርገው ቦቱ ላይ ይላኩት።";
+            document.getElementById("code-box").style.display = "block";
         })
         .catch(err => {
-            tg.sendData("CHECK_DEVICE:" + uniqueDeviceId);
-            tg.close();
+            let finalCode = "VERIFY-" + deviceHash;
+            document.getElementById("secret-code").innerHTML = finalCode;
+            document.getElementById("status").innerHTML = "✅ ተጠናቋል!";
+            document.getElementById("code-box").style.display = "block";
         });
     </script>
 </body>
