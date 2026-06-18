@@ -1,32 +1,39 @@
-async function getHyperUniqueDeviceID() {
-    const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl');
-    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-    
-    // 1. Hardware: የግራፊክስ ካርድ (GPU)
-    const gpu = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-    
-    // 2. Software & User Preferences (ይሄ ነው ተመሳሳይ ስልክ ያላቸውን የሚለየው!)
-    const info = [
-        gpu,
-        navigator.userAgent,
-        screen.width, screen.height,
-        window.devicePixelRatio, // በጣም አስፈላጊ: ተጠቃሚው Font/Zoom ከቀየረ ይህ ይቀየራል
-        navigator.language,
-        Intl.DateTimeFormat().resolvedOptions().timeZone,
-        navigator.hardwareConcurrency,
-        navigator.deviceMemory,
-        // *** አዲስ ተጨምሯል: የስርዓት ዝርዝሮች ***
-        navigator.platform,
-        // **Canvas Rendering ልዩነት (በእያንዳንዱ ስልክ ግራፊክስ ድራይቨር የሚለያይ)**
-        canvas.toDataURL(), 
-        // **ተጠቃሚው በብሮውዘር የከፈታቸው የፊደል መቼቶች**
-        document.fonts ? document.fonts.size : "unknown"
-    ].join('|||');
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Security Check</title>
+</head>
+<body>
+    <script>
+        async function generateDeviceFingerprint() {
+            // ሃርድዌር መረጃዎችን መሰብሰብ
+            const components = [
+                navigator.userAgent,
+                navigator.hardwareConcurrency,
+                navigator.deviceMemory,
+                screen.width,
+                screen.height,
+                window.devicePixelRatio,
+                Intl.DateTimeFormat().resolvedOptions().timeZone,
+                navigator.platform
+            ].join('---');
 
-    // 3. SHA-256 Hash
-    const msgUint8 = new TextEncoder().encode(info);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return "DEVICE_IMEI_SIMULATOR_" + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
+            // መረጃውን ወደ Hash መቀየር
+            const encoder = new TextEncoder();
+            const data = encoder.encode(components);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            
+            return "DEV_" + hashHex;
+        }
+
+        // መታወቂያውን ማመንጨት እና መጠቀም
+        generateDeviceFingerprint().then(id => {
+            console.log("የእርስዎ ልዩ መታወቂያ:", id);
+            // እዚህ ጋር id-ውን ወደ ቦትህ የምትልክበትን ኮድ ታስገባለህ
+        });
+    </script>
+</body>
+</html>
