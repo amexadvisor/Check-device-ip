@@ -1,56 +1,32 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Device Verification</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; padding: 20px; }
-        .container { margin-top: 50px; padding: 25px; background: #1a1a1a; border-radius: 15px; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div id="status">የመሳሪያ መታወቂያ በመፍጠር ላይ...</div>
-        <button id="btn" onclick="sendData()" style="display:none; padding:15px; margin-top:20px;">✅ ማረጋገጫ ላክ</button>
-    </div>
+async function getHyperUniqueDeviceID() {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl');
+    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+    
+    // 1. Hardware: የግራፊክስ ካርድ (GPU)
+    const gpu = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+    
+    // 2. Software & User Preferences (ይሄ ነው ተመሳሳይ ስልክ ያላቸውን የሚለየው!)
+    const info = [
+        gpu,
+        navigator.userAgent,
+        screen.width, screen.height,
+        window.devicePixelRatio, // በጣም አስፈላጊ: ተጠቃሚው Font/Zoom ከቀየረ ይህ ይቀየራል
+        navigator.language,
+        Intl.DateTimeFormat().resolvedOptions().timeZone,
+        navigator.hardwareConcurrency,
+        navigator.deviceMemory,
+        // *** አዲስ ተጨምሯል: የስርዓት ዝርዝሮች ***
+        navigator.platform,
+        // **Canvas Rendering ልዩነት (በእያንዳንዱ ስልክ ግራፊክስ ድራይቨር የሚለያይ)**
+        canvas.toDataURL(), 
+        // **ተጠቃሚው በብሮውዘር የከፈታቸው የፊደል መቼቶች**
+        document.fonts ? document.fonts.size : "unknown"
+    ].join('|||');
 
-    <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-
-        // መሳሪያውን ለመለየት የማይለዋወጡ መረጃዎችን ማሰባሰብ
-        function getDeviceFingerprint() {
-            const components = [
-                navigator.userAgent,           // የብሮውዘር አይነት
-                navigator.language,            // ቋንቋ
-                screen.width + "x" + screen.height, // የስክሪን መጠን
-                screen.colorDepth,             // የቀለም ጥልቀት
-                navigator.hardwareConcurrency, // የሲፒዩ ኮር ብዛት
-                Intl.DateTimeFormat().resolvedOptions().timeZone // የጊዜ ቀጠና
-            ];
-            
-            const fingerprint = components.join('|');
-            
-            // የባህሪ መረጃውን ወደ Unique ID (Hash) መቀየር
-            let hash = 0;
-            for (let i = 0; i < fingerprint.length; i++) {
-                hash = ((hash << 5) - hash) + fingerprint.charCodeAt(i);
-                hash = hash & hash;
-            }
-            return "DEV_" + Math.abs(hash).toString(16);
-        }
-
-        const deviceId = getDeviceFingerprint();
-
-        document.getElementById("status").innerText = "መታወቂያ ተገኝቷል: " + deviceId;
-        document.getElementById("btn").style.display = "block";
-
-        function sendData() {
-            // ይህንን ID ለቦቱ ትልኪዋለሽ
-            tg.sendData("DEVICE_ID:" + deviceId);
-            tg.close();
-        }
-    </script>
-</body>
-</html>
+    // 3. SHA-256 Hash
+    const msgUint8 = new TextEncoder().encode(info);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return "DEVICE_IMEI_SIMULATOR_" + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
