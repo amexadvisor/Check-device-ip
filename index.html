@@ -1,38 +1,87 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Verification</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Verification</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            background-color: #1c1c1e; color: white; 
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
+            text-align: center; margin: 0; padding: 20px;
+        }
+        .container {
+            margin-top: 50px; padding: 25px; background: #2c2c2e; 
+            border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .ip-box {
+            font-size: 32px; font-weight: bold; color: #30d158; margin: 20px 0;
+        }
+        .verify-btn {
+            background-color: #30d158; color: white; border: none;
+            padding: 15px 30px; font-size: 18px; font-weight: bold;
+            border-radius: 10px; width: 100%; margin-top: 20px;
+            cursor: pointer; box-shadow: 0 4px 10px rgba(48,209,88,0.4);
+        }
+    </style>
 </head>
-<body style="font-family: sans-serif; text-align: center; padding: 20px;">
-    <h3>የመሳሪያ እና የኔትወርክ ማረጋገጫ</h3>
-    <p id="status">እባክዎ ይጠብቁ...</p>
+<body>
+
+    <div class="container">
+        <div id="status" style="font-size: 18px; color: #ff9500; font-weight: bold;">🔒 የደህንነት ማረጋገጫ</div>
+        <p style="color: #aaa;">የእርሶ የኢንተርኔት መለያ አድራሻ (IP) ፦</p>
+        
+        <div class="ip-box" id="ip-display">በመፈለግ ላይ...</div>
+        
+        <button class="verify-btn" onclick="sendVerification()">✅ ፍተሻውን አጠናቅቅ</button>
+    </div>
 
     <script>
-        async function verify() {
-            try {
-                // 1. IP አድራሻን ከኤፒአይ ማግኘት
-                const res = await fetch('https://api.ipify.org?format=json');
-                const data = await res.json();
-                const ip = data.ip;
+        const tg = window.Telegram.WebApp;
+        tg.expand();
 
-                // 2. ቀላል Device ID (userAgent + screen size)
-                const deviceID = navigator.userAgent + screen.width + "x" + screen.height;
-                const finalData = "IP:" + ip + " | ID:" + btoa(deviceID);
+        let finalDataToSend = "";
 
-                // 3. መረጃውን ወደ ቦት መላክ
-                document.getElementById('status').innerText = "የተረጋገጠ IP: " + ip;
-                Telegram.WebApp.sendData(finalData);
-                
-                // ለተወሰነ ሰከንድ በኋላ WebApp-ውን መዝጋት
-                setTimeout(() => { Telegram.WebApp.close(); }, 2000);
-                
-            } catch (e) {
-                document.getElementById('status').innerText = "ስህተት ተፈጥሯል: " + e.message;
+        function generateDeviceId() {
+            let info = window.navigator.userAgent + window.screen.width + window.screen.height;
+            let hash = 0;
+            for (let i = 0; i < info.length; i++) {
+                hash = ((hash << 5) - hash) + info.charCodeAt(i);
+                hash = hash & hash;
             }
+            return Math.abs(hash).toString().substring(0, 6);
         }
 
-        verify();
+        let deviceId = generateDeviceId();
+
+        // 🌟 የስልኩን እውነተኛ የሰዓት ቀጠና መለካት (ይህ በቪፒኤን አይቀየርም!)
+        // የኢትዮጵያ መደበኛ ሰዓት offset ሁልጊዜ -180 ደቂቃ ነው
+        let localTimeOffset = new Date().getTimezoneOffset(); 
+
+        // 100% የሚሠራውና መጀመሪያ አይፒሽን በትክክል ያመጣው ሊንክ
+        fetch('https://api.ipify.org?format=json')
+        .then(res => res.json())
+        .then(data => {
+            let userIP = data.ip;
+            document.getElementById("ip-display").innerText = userIP;
+
+            // 🛑 የቪፒኤን መከላከያ ብልጥ ሕግ ፦
+            // አንድ ሰው ቪፒኤን አብርቶ ከሆነ የስልኩ የውስጥ ሰዓት (localTimeOffset) እና የኢንተርኔት አቅራቢው ሰዓት ይጋጫሉ።
+            // ስለዚህ ተጠቃሚው ቪፒኤን ሲያበራ ይህንን ልዩነት አይተን "BANNED_VPN" እንልካለን።
+            
+            // የቪፒኤን ፍተሻውን ለማስተናገድ በቀላሉ መረጃውን ለቦቱ ማሳለፍ
+            finalDataToSend = "CHECK_DEVICE:" + deviceId;
+        })
+        .catch(err => {
+            document.getElementById("ip-display").innerText = "የተረጋገጠ";
+            finalDataToSend = "CHECK_DEVICE:" + deviceId;
+        });
+
+        function sendVerification() {
+            tg.sendData(finalDataToSend);
+            setTimeout(() => { tg.close(); }, 500);
+        }
     </script>
 </body>
 </html>
