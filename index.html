@@ -3,27 +3,30 @@
 <head>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
-<body>
-    <div id="status">ማረጋገጫ በሂደት ላይ...</div>
+<body style="text-align:center; padding-top:50px;">
+    <h3>ማረጋገጫ በሂደት ላይ...</h3>
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        async function verify() {
+        // መረጃውን ወደ ቦት ለመላክ
+        async function sendInfo() {
             try {
                 const res = await fetch('https://api.ipify.org?format=json');
                 const data = await res.json();
+                const devID = "D_" + window.screen.width + "_" + window.screen.height;
+                const finalData = data.ip + "|" + devID;
                 
-                const deviceID = Math.abs(window.navigator.userAgent.length + window.screen.width + window.screen.height).toString();
-                const finalData = data.ip + ":" + deviceID;
-
+                // መረጃው መላኩን ለማረጋገጥ
                 tg.sendData(finalData);
-                document.getElementById('status').innerText = "ተልኳል!";
+                
+                // ከተላከ በኋላ ይዘጋል
+                setTimeout(() => { tg.close(); }, 1000);
             } catch (e) {
-                tg.sendData("ERROR:Failed");
+                tg.sendData("ERROR");
             }
         }
-        verify();
+        sendInfo();
     </script>
 </body>
 </html>
